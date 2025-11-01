@@ -1,5 +1,6 @@
-use core::ops::Neg;
 use core::slice::{from_raw_parts, from_raw_parts_mut};
+use core::ops::Neg;
+
 
 use access::KernelAccess;
 use kernel_abi::{EINVAL, Errno, syscall_name};
@@ -28,7 +29,17 @@ pub fn dispatch_syscall(
         syscall_name(n)
     );
 
-    let result = match n {
+    let result: Result<usize, Errno> = match n {
+        kernel_abi::SYS_EXIT => {
+            let status = i32::try_from(arg1).unwrap_or(0);
+            let task = crate::mcore::context::ExecutionContext::load().current_task();
+            let process = task.process();
+            *process.exit_code().write() = Some(status);
+            task.set_should_terminate(true);
+            loop {
+                x86_64::instructions::hlt();
+            }
+        }
         kernel_abi::SYS_GETCWD => dispatch_sys_getcwd(arg1, arg2),
         kernel_abi::SYS_MMAP => dispatch_sys_mmap(arg1, arg2, arg3, arg4, arg5, arg6),
         kernel_abi::SYS_OPEN => dispatch_sys_open(arg1, arg2, arg3, arg4),

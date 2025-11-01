@@ -8,6 +8,7 @@ use log::{debug, info};
 use x86_64::instructions::hlt;
 
 use crate::mcore::mtask::process::Process;
+use crate::mcore::mtask::process::tree::process_tree;
 use crate::mcore::mtask::scheduler::global::GlobalTaskQueue;
 use crate::mcore::mtask::task::{Task, TaskQueue};
 
@@ -46,6 +47,9 @@ impl TaskCleanup {
         loop {
             while let Some(task) = TaskCleanup::dequeue() {
                 debug!("dropping task {}", task.id());
+                if process_tree().read().processes.len() == 1 {
+                    crate::arch::x86_64::shutdown();
+                }
             }
             hlt();
         }
