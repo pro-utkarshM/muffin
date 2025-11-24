@@ -1,0 +1,153 @@
+use core::arch::asm;
+
+/// Exception vector table
+#[repr(C, align(2048))]
+pub struct ExceptionVectorTable {
+    // Current EL with SP0
+    curr_el_sp0_sync: [u8; 128],
+    curr_el_sp0_irq: [u8; 128],
+    curr_el_sp0_fiq: [u8; 128],
+    curr_el_sp0_serror: [u8; 128],
+    
+    // Current EL with SPx
+    curr_el_spx_sync: [u8; 128],
+    curr_el_spx_irq: [u8; 128],
+    curr_el_spx_fiq: [u8; 128],
+    curr_el_spx_serror: [u8; 128],
+    
+    // Lower EL using AArch64
+    lower_el_aarch64_sync: [u8; 128],
+    lower_el_aarch64_irq: [u8; 128],
+    lower_el_aarch64_fiq: [u8; 128],
+    lower_el_aarch64_serror: [u8; 128],
+    
+    // Lower EL using AArch32
+    lower_el_aarch32_sync: [u8; 128],
+    lower_el_aarch32_irq: [u8; 128],
+    lower_el_aarch32_fiq: [u8; 128],
+    lower_el_aarch32_serror: [u8; 128],
+}
+
+/// Initialize exception vector table
+pub fn init_exception_vector() {
+    unsafe {
+        let vbar = exception_vector_base as *const () as u64;
+        asm!("msr vbar_el1, {}", in(reg) vbar);
+    }
+}
+
+/// Exception vector base (defined in assembly)
+extern "C" {
+    fn exception_vector_base();
+}
+
+/// Synchronous exception handler
+#[no_mangle]
+pub extern "C" fn handle_sync_exception() {
+    let esr: u64;
+    let elr: u64;
+    let far: u64;
+    
+    unsafe {
+        asm!("mrs {}, esr_el1", out(reg) esr);
+        asm!("mrs {}, elr_el1", out(reg) elr);
+        asm!("mrs {}, far_el1", out(reg) far);
+    }
+    
+    let ec = (esr >> 26) & 0x3F; // Exception class
+    let iss = esr & 0x1FFFFFF;   // Instruction specific syndrome
+    
+    match ec {
+        0x15 => {
+            // SVC instruction execution in AArch64 state
+            crate::arch::aarch64::syscall::handle_syscall();
+        }
+        0x20 | 0x21 => {
+            // Instruction abort from lower/same EL
+            panic!("Instruction abort at {:#x}, far: {:#x}", elr, far);
+        }
+        0x24 | 0x25 => {
+            // Data abort from lower/same EL
+            handle_data_abort(elr, far, iss);
+        }
+        _ => {
+            panic!(
+                "Unhandled synchronous exception: EC={:#x}, ISS={:#x}, ELR={:#x}",
+                ec, iss, elr
+            );
+        }
+    }
+}
+
+fn handle_data_abort(elr: u64, far: u64, iss: u64) {
+    let is_write = (iss & (1 << 6)) != 0;
+    
+    log::error!(
+        "Data abort at {:#x}, address: {:#x}, write: {}",
+        elr,
+        far,
+        is_write
+    );
+    
+    // TODO: Implement page fault handling
+    panic!("Data abort not yet implemented");
+}
+
+/// IRQ handler
+#[no_mangle]
+pub extern "C" fn handle_irq() {
+    crate::arch::aarch64::interrupts::handle_irq();
+}
+
+/// FIQ handler
+#[no_mangle]
+pub extern "C" fn handle_fiq() {
+    log::warn!("FIQ received");
+}
+
+/// SError handler
+#[no_mangle]
+pub extern "C" fn handle_serror() {
+    panic!("SError received");
+}
+
+/// Exception context saved on exception entry
+#[repr(C)]
+pub struct ExceptionContext {
+    // General purpose registers
+    pub x0: u64,
+    pub x1: u64,
+    pub x2: u64,
+    pub x3: u64,
+    pub x4: u64,
+    pub x5: u64,
+    pub x6: u64,
+    pub x7: u64,
+    pub x8: u64,
+    pub x9: u64,
+    pub x10: u64,
+    pub x11: u64,
+    pub x12: u64,
+    pub x13: u64,
+    pub x14: u64,
+    pub x15: u64,
+    pub x16: u64,
+    pub x17: u64,
+    pub x18: u64,
+    pub x19: u64,
+    pub x20: u64,
+    pub x21: u64,
+    pub x22: u64,
+    pub x23: u64,
+    pub x24: u64,
+    pub x25: u64,
+    pub x26: u64,
+    pub x27: u64,
+    pub x28: u64,
+    pub x29: u64, // Frame pointer
+    pub x30: u64, // Link register
+    
+    // Exception state
+    pub elr: u64,  // Exception link register
+    pub spsr: u64, // Saved program status register
+}

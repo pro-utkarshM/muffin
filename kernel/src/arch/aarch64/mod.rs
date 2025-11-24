@@ -1,0 +1,65 @@
+pub mod boot;
+pub mod context;
+pub mod exceptions;
+pub mod interrupts;
+pub mod paging;
+pub mod shutdown;
+pub mod syscall;
+
+use crate::arch::traits::Architecture;
+use aarch64_cpu::registers::*;
+use aarch64_cpu::asm::barrier;
+
+pub struct Aarch64;
+
+impl Architecture for Aarch64 {
+    fn early_init() {
+        // Setup exception vector table
+        exceptions::init_exception_vector();
+    }
+    
+    fn init() {
+        // Initialize paging
+        paging::init();
+        
+        // Initialize interrupt controller (GIC)
+        interrupts::init();
+        
+        // Setup syscall interface
+        syscall::init();
+    }
+    
+    fn enable_interrupts() {
+        unsafe {
+            core::arch::asm!("msr daifclr, #2");
+        }
+    }
+    
+    fn disable_interrupts() {
+        unsafe {
+            core::arch::asm!("msr daifset, #2");
+        }
+    }
+    
+    fn are_interrupts_enabled() -> bool {
+        let daif: u64;
+        unsafe {
+            core::arch::asm!("mrs {}, daif", out(reg) daif);
+        }
+        (daif & 0x80) == 0
+    }
+    
+    fn wait_for_interrupt() {
+        unsafe {
+            core::arch::asm!("wfi");
+        }
+    }
+    
+    fn shutdown() -> ! {
+        shutdown::shutdown()
+    }
+    
+    fn reboot() -> ! {
+        shutdown::reboot()
+    }
+}
