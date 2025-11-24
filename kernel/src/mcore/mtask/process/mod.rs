@@ -43,7 +43,7 @@ pub mod telemetry;
 use crate::mcore::mtask::scheduler::global::GlobalTaskQueue;
 use crate::mem::virt::VirtualMemoryAllocator;
 
-mod tree;
+pub mod tree;
 
 static ROOT_PROCESS: OnceCell<Arc<Process>> = OnceCell::uninit();
 
@@ -52,6 +52,8 @@ pub struct Process {
     name: String,
 
     ppid: RwLock<ProcessId>,
+
+    exit_code: RwLock<Option<i32>>,
 
     executable_path: Option<AbsoluteOwnedPath>,
     executable_file_data: RwLock<Option<LowerHalfAllocation<Executable>>>,
@@ -75,6 +77,7 @@ impl Process {
                 pid,
                 name: "root".to_string(),
                 ppid: RwLock::new(pid),
+                exit_code: RwLock::new(None),
                 executable_path: None,
                 executable_file_data: RwLock::new(None),
                 current_working_directory: RwLock::new(ROOT.to_owned()),
@@ -105,6 +108,7 @@ impl Process {
             pid,
             name,
             ppid: RwLock::new(parent_pid),
+            exit_code: RwLock::new(None),
             executable_path: executable_path.map(|x| x.as_ref().to_owned()),
             executable_file_data: RwLock::new(None),
             current_working_directory: RwLock::new(parent.current_working_directory.read().clone()),
@@ -158,6 +162,10 @@ impl Process {
         GlobalTaskQueue::enqueue(Box::pin(main_task));
 
         Ok(process)
+    }
+
+    pub fn exit_code(&self) -> &RwLock<Option<i32>> {
+        &self.exit_code
     }
 
     pub fn pid(&self) -> ProcessId {
