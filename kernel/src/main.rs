@@ -12,6 +12,7 @@ use kernel::driver::KernelDeviceId;
 use kernel::driver::block::BlockDevices;
 use kernel::file::ext2::VirtualExt2Fs;
 use kernel::file::vfs;
+#[cfg(target_arch = "x86_64")]
 use kernel::limine::BASE_REVISION;
 use kernel::mcore;
 use kernel::mcore::mtask::process::Process;
@@ -33,6 +34,7 @@ fn hlt() {
 
 #[unsafe(export_name = "kernel_main")]
 unsafe extern "C" fn main() -> ! {
+    #[cfg(target_arch = "x86_64")]
     assert!(BASE_REVISION.is_supported());
 
     kernel::init();

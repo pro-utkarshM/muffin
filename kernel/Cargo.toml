@@ -39,6 +39,9 @@ riscv = { workspace = true, optional = true }
 aarch64-cpu = { workspace = true, optional = true }
 zerocopy.workspace = true
 
+[build-dependencies]
+cc = "1.0"
+
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 acpi.workspace = true
 raw-cpuid.workspace = true

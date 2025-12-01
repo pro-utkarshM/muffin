@@ -1,4 +1,8 @@
 pub mod traits;
+pub mod types;
+
+// Re-export common types
+pub use types::{PhysAddr, VirtAddr, PhysFrame, PhysFrameRange};
 
 #[cfg(target_arch = "x86_64")]
 pub mod gdt;

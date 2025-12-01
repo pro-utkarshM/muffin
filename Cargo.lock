@@ -574,6 +574,7 @@ dependencies = [
  "addr2line",
  "bitfield",
  "bitflags 2.10.0",
+ "cc",
  "conquer-once",
  "cordyceps",
  "elf",
