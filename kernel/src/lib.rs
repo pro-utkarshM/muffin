@@ -8,6 +8,7 @@ use ::log::info;
 use conquer_once::spin::OnceCell;
 
 use crate::driver::pci;
+#[cfg(target_arch = "x86_64")]
 use crate::limine::BOOT_TIME;
 
 #[cfg(target_arch = "x86_64")]
@@ -20,6 +21,7 @@ pub mod driver;
 pub mod file;
 #[cfg(target_arch = "x86_64")]
 pub mod hpet;
+#[cfg(target_arch = "x86_64")]
 pub mod limine;
 mod log;
 pub mod mcore;
@@ -35,7 +37,10 @@ static BOOT_TIME_SECONDS: OnceCell<u64> = OnceCell::uninit();
 /// # Panics
 /// Panics if there was no boot time provided by limine.
 fn init_boot_time() {
+    #[cfg(target_arch = "x86_64")]
     BOOT_TIME_SECONDS.init_once(|| BOOT_TIME.get_response().unwrap().timestamp().as_secs());
+    #[cfg(not(target_arch = "x86_64"))]
+    BOOT_TIME_SECONDS.init_once(|| 0); // TODO: Get boot time from device tree
 }
 
 pub fn init() {

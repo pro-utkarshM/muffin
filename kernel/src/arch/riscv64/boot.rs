@@ -21,29 +21,13 @@ pub fn boot_info() -> &'static BootInfo {
 }
 
 /// Early boot initialization (called from assembly)
+/// Assembly entry point is in boot.S which calls this function
 #[no_mangle]
-pub unsafe extern "C" fn _start(hart_id: usize, dtb_addr: usize) -> ! {
+pub unsafe extern "C" fn _start_rust(hart_id: usize, dtb_addr: usize) -> ! {
     // Initialize boot info
     init_boot_info(hart_id, dtb_addr);
     
-    // Only boot hart 0
-    if hart_id != 0 {
-        loop {
-            riscv::asm::wfi();
-        }
-    }
-    
-    // Clear BSS
-    extern "C" {
-        static mut __bss_start: u8;
-        static mut __bss_end: u8;
-    }
-    
-    let bss_start = &mut __bss_start as *mut u8;
-    let bss_end = &mut __bss_end as *mut u8;
-    let bss_size = bss_end as usize - bss_start as usize;
-    
-    core::ptr::write_bytes(bss_start, 0, bss_size);
+    // Note: Hart filtering and BSS clearing is done in boot.S assembly
     
     // Jump to kernel main
     extern "Rust" {

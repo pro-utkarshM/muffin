@@ -1,0 +1,16 @@
+[package]
+name = "riscv-kernel-demo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+riscv = "0.11"
+
+[build-dependencies]
+cc = "1.0"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"

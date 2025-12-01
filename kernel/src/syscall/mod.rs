@@ -10,7 +10,17 @@ use kernel_syscall::mman::sys_mmap;
 use kernel_syscall::unistd::{sys_getcwd, sys_read, sys_write};
 use kernel_syscall::{UserspaceMutPtr, UserspacePtr};
 use log::{error, trace};
+
+#[cfg(target_arch = "x86_64")]
 use x86_64::instructions::hlt;
+
+#[cfg(not(target_arch = "x86_64"))]
+fn hlt() {
+    #[cfg(target_arch = "riscv64")]
+    unsafe { riscv::asm::wfi(); }
+    #[cfg(target_arch = "aarch64")]
+    unsafe { core::arch::asm!("wfi"); }
+}
 
 mod access;
 
@@ -37,7 +47,7 @@ pub fn dispatch_syscall(
             *process.exit_code().write() = Some(status);
             task.set_should_terminate(true);
             loop {
-                x86_64::instructions::hlt();
+                hlt();
             }
         }
         kernel_abi::SYS_GETCWD => dispatch_sys_getcwd(arg1, arg2),
